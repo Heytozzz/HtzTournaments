@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HtzTournaments</title>
+  <meta name="description" content="Crea cuadros de torneo y tablas de clasificación: importa participantes, barajea, añade suplentes y define campeón, 2º y 3er lugar." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=4" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="wordmark">HtzTournaments</div>
+      <nav class="nav" aria-label="Secciones">
+        <p class="nav-group">Torneo</p>
+        <button type="button" class="nav-item" data-view="participants">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6" cy="5" r="2.5"/><path d="M1.5 14c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5"/><path d="M11 3a2.3 2.3 0 0 1 0 4.5M12.5 9.7c1.3.6 2 2 2 4.3"/></svg>
+          <span>Participantes</span>
+        </button>
+        <button type="button" class="nav-item" data-view="bracket">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3h4v4h-4M1.5 9h4v4h-4M5.5 5h2v6h-2M7.5 8h3M10.5 6h4v4h-4"/></svg>
+          <span>Cuadro</span>
+        </button>
+        <button type="button" class="nav-item" data-view="standings">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 14.5v-8h5v8M1.5 14.5v-5h4M10.5 14.5v-3h4v3M1 14.5h14"/></svg>
+          <span>Clasificación</span>
+        </button>
+        <p class="nav-group">Tus datos</p>
+        <button type="button" class="nav-item" data-view="backup">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v8M5 6.5l3 3 3-3M2 11v3.5h12V11"/></svg>
+          <span>Guardar y compartir</span>
+        </button>
+        <button type="button" class="nav-item" data-view="settings">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.4 3.4l1.3 1.3M11.3 11.3l1.3 1.3M3.4 12.6l1.3-1.3M11.3 4.7l1.3-1.3"/></svg>
+          <span>Ajustes</span>
+        </button>
+      </nav>
+      <a class="kofi" href="https://ko-fi.com/heytoz" target="_blank" rel="noopener noreferrer">Apoyar en Ko-fi</a>
+    </aside>
+
+    <header class="topbar">
+      <label class="sr-only" for="tName">Nombre del torneo</label>
+      <input id="tName" class="t-name" type="text" maxlength="60" autocomplete="off" />
+      <span id="tMeta" class="t-meta"></span>
+      <div class="topbar-actions">
+        <button type="button" id="undoBtn" class="btn ghost" title="Deshacer (Ctrl+Z)" disabled>Deshacer</button>
+        <div class="switcher">
+          <label class="sr-only" for="tSwitch">Mis torneos</label>
+          <select id="tSwitch"></select>
+          <button type="button" id="newTournamentBtn" class="btn ghost" aria-label="Nuevo torneo">+<span class="nt-label"> Nuevo torneo</span></button>
+        </div>
+      </div>
+    </header>
+
+    <main class="canvas" id="canvas">
+      <!-- PARTICIPANTES -->
+      <section class="view" id="view-participants" aria-labelledby="h-participants">
+        <div class="title-row">
+          <div>
+            <h1 id="h-participants">Participantes</h1>
+            <p class="finding" id="pFinding"></p>
+          </div>
+          <button type="button" id="generateBtn" class="btn primary big">¡Empezar torneo!</button>
+        </div>
+
+        <div class="p-grid">
+          <div class="p-main">
+            <div class="count-cards" role="tablist" aria-label="Filtrar participantes" hidden>
+              <button type="button" class="count-card" data-filter="all" role="tab"><span>Todos</span><strong id="cAll" class="num">0</strong></button>
+              <button type="button" class="count-card" data-filter="main" role="tab"><span>Jugadores</span><strong id="cMain" class="num">0</strong></button>
+              <button type="button" class="count-card" data-filter="sub" role="tab"><span>Suplentes</span><strong id="cSub" class="num">0</strong></button>
+            </div>
+
+            <div class="panel">
+              <h2><span class="step">1</span>¿Quiénes juegan?</h2>
+              <form id="addForm" class="add-row" autocomplete="off">
+                <label class="sr-only" for="addName">Nombre del participante</label>
+                <input id="addName" type="text" placeholder="Escribe un nombre y pulsa Enter, o pega una lista" maxlength="40" />
+                <label class="check"><input id="addAsSub" type="checkbox" /> Es suplente</label>
+                <button type="submit" class="btn">Añadir</button>
+              </form>
+              <div class="list-tools">
+                <button type="button" id="shuffleBtn" class="btn">
+                  <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 4h3c3 0 4 8 7 8h3M1.5 12h3c1.3 0 2.2-1.4 3-3M9.5 6.5c.6-1.4 1.2-2.5 2-2.5h3M12.5 2l2 2-2 2M12.5 10l2 2-2 2"/></svg>
+                  Mezclar al azar</button>
+                <button type="button" id="bulkToggle" class="btn ghost" aria-expanded="false" aria-controls="bulkBox">Pegar varios nombres</button>
+                <details class="more">
+                  <summary class="btn ghost">Más</summary>
+                  <div class="more-menu">
+                    <button type="button" id="sortBtn" class="btn ghost">Ordenar de la A a la Z</button>
+                    <button type="button" class="btn ghost" data-go="backup">Cargar una lista guardada</button>
+                    <button type="button" id="clearBtn" class="btn ghost danger">Borrar toda la lista</button>
+                  </div>
+                </details>
+              </div>
+              <div id="bulkBox" class="bulk" hidden>
+                <label for="bulkText">Escribe o pega un nombre por línea. Si alguien es suplente, añade <b>(suplente)</b> al final.</label>
+                <textarea id="bulkText" rows="6" placeholder="Ana&#10;Bruno&#10;Carla (suplente)"></textarea>
+                <div class="bulk-actions">
+                  <button type="button" id="bulkAdd" class="btn">Añadir a la lista</button>
+                  <button type="button" id="bulkReplace" class="btn ghost">Cambiar toda la lista por esta</button>
+                </div>
+              </div>
+              <ol id="pList" class="p-list"></ol>
+              <div id="pEmpty" class="empty" hidden>
+                <p class="empty-title">Aún no hay nadie</p>
+                <p>Escribe un nombre arriba y pulsa Enter. También puedes pegar una lista entera de golpe.</p>
+              </div>
+            </div>
+
+            <div class="panel" id="teamsPanel" hidden>
+              <div class="panel-head">
+                <h2>Equipos</h2>
+                <div class="row-actions">
+                  <button type="button" id="drawTeamsBtn" class="btn">Armar equipos al azar</button>
+                  <button type="button" id="clearTeamsBtn" class="btn ghost">Vaciar equipos</button>
+                </div>
+              </div>
+              <p class="note">Para poner a alguien en un equipo a mano, elige el equipo junto a su nombre en la lista. Quien no tenga equipo se sortea. Toca el nombre de un equipo para cambiarlo.</p>
+              <div id="teamsGrid" class="teams-grid"></div>
+              <p class="note" id="teamsLoose"></p>
+            </div>
+          </div>
+
+          <aside class="p-side">
+            <div class="panel">
+              <h2><span class="step">2</span>¿Cómo se juega?</h2>
+              <div class="format-cards" id="formatSeg" role="radiogroup" aria-label="Tipo de torneo">
+                <button type="button" role="radio" data-format="single">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h5v4H3zM3 15h5v4H3zM8 7h3v10H8M11 12h4M15 10h6v4h-6z"/></svg>
+                  <b>Cuadro</b><span>Partidas por parejas. Quien pierde queda fuera.</span>
+                </button>
+                <button type="button" role="radio" data-format="league">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h16M4 20h16M9 3v19"/></svg>
+                  <b>Liga</b><span>Todos contra todos. Gana quien sume más puntos.</span>
+                </button>
+                <button type="button" role="radio" data-format="elim">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="2.5"/><circle cx="12" cy="7" r="2.5"/><circle cx="18" cy="7" r="2.5"/><path d="M3.5 15.5l5 5M8.5 15.5l-5 5"/><circle cx="16" cy="18" r="2.5"/></svg>
+                  <b>Eliminación</b><span>Tocas a quien sale hasta que quede uno.</span>
+                </button>
+              </div>
+              <div class="field">
+                <label for="placesInput">¿Cuántos lugares quieres premiar?</label>
+                <select id="placesInput">
+                  <option value="1">Solo al campeón</option>
+                  <option value="2">1º y 2º</option>
+                  <option value="3">1º, 2º y 3º</option>
+                  <option value="4">Hasta el 4º</option>
+                  <option value="8">Hasta el 8º</option>
+                </select>
+              </div>
+              <label class="check"><input id="teamInput" type="checkbox" /> Jugar por equipos</label>
+              <div class="field" id="teamSizeField" hidden>
+                <label for="teamSizeInput">Personas por equipo</label>
+                <select id="teamSizeInput">
+                  <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                  <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="10">10</option>
+                </select>
+              </div>
+              <div class="only-single">
+                <label class="check"><input id="thirdInput" type="checkbox" /> Jugar una partida por el 3er lugar</label>
+              </div>
+              <div class="no-elim">
+                <label class="check"><input id="drawInput" type="checkbox" /> Sortear quién juega contra quién</label>
+              </div>
+              <p class="note" id="formatNote"></p>
+              <details class="advanced">
+                <summary>Opciones avanzadas</summary>
+                <div class="only-single">
+                  <label class="check"><input id="byeSubsInput" type="checkbox" /> Si los números no cuadran, meter suplentes para que nadie pase sin jugar</label>
+                  <label class="check"><input id="seededInput" type="checkbox" /> Emparejar según el orden de la lista (el 1º contra el último)</label>
+                </div>
+                <div class="only-league">
+                  <label class="check"><input id="doubleInput" type="checkbox" /> Ida y vuelta (cada pareja juega dos veces)</label>
+                  <div class="field">
+                    <label for="pointsInput">Puntos por ganar / por empatar</label>
+                    <select id="pointsInput">
+                      <option value="3-1">3 por ganar, 1 por empatar</option>
+                      <option value="2-1">2 por ganar, 1 por empatar</option>
+                      <option value="1-0">1 por ganar, 0 por empatar</option>
+                    </select>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- CUADRO -->
+      <section class="view" id="view-bracket" aria-labelledby="h-bracket" hidden>
+        <div class="title-row">
+          <div>
+            <h1 id="h-bracket">Cuadro</h1>
+            <p class="finding" id="bFinding"></p>
+          </div>
+        </div>
+        <div class="b-layout">
+          <div class="bracket-box">
+            <div id="bracketWrap" class="bracket-wrap"></div>
+            <button type="button" id="presentBtn" class="fs-btn" aria-label="Pantalla completa" title="Pantalla completa">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+            </button>
+          </div>
+          <details class="panel subs-panel" id="subsPanel">
+            <summary><h2>Cambiar a alguien por un suplente</h2><span class="note">Por si alguien no puede seguir jugando</span></summary>
+            <div class="subs-body">
+              <div>
+                <p class="note">Elige quién sale. El suplente ocupa su lugar y se queda con sus resultados.</p>
+                <ul id="subsList" class="subs-list"></ul>
+              </div>
+              <div>
+                <h3 class="sub-h">Historial de cambios</h3>
+                <ul id="logList" class="log-list"></ul>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- CLASIFICACIÓN -->
+      <section class="view" id="view-standings" aria-labelledby="h-standings" hidden>
+        <div class="title-row">
+          <div>
+            <h1 id="h-standings">Clasificación</h1>
+            <p class="finding" id="sFinding"></p>
+          </div>
+          <button type="button" id="copyStandingsBtn" class="btn ghost">Copiar resultados</button>
+        </div>
+        <div id="podium" class="podium"></div>
+        <div class="panel table-panel">
+          <table class="table" id="standingsTable"></table>
+        </div>
+      </section>
+
+      <!-- GUARDAR Y COMPARTIR -->
+      <section class="view" id="view-backup" aria-labelledby="h-backup" hidden>
+        <div class="title-row">
+          <div>
+            <h1 id="h-backup">Guardar y compartir</h1>
+            <p class="finding">Todo se guarda solo en este navegador. Aquí puedes guardar tus listas o llevarte el torneo a otro equipo.</p>
+          </div>
+        </div>
+        <div class="backup-grid">
+          <div class="panel">
+            <h2>Mis listas guardadas</h2>
+            <p class="note">Guarda la lista de participantes para usarla en otro torneo.</p>
+            <div class="field">
+              <label class="sr-only" for="savedSelect">Lista guardada</label>
+              <select id="savedSelect"></select>
+            </div>
+            <div class="row-actions">
+              <button type="button" id="loadListBtn" class="btn">Usar esta lista</button>
+              <button type="button" id="saveListBtn" class="btn ghost">Guardar la lista actual</button>
+              <button type="button" id="deleteListBtn" class="btn ghost danger">Borrar</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>Lista en un archivo</h2>
+            <p class="note">Sube un archivo de texto con un nombre por línea, o descarga la lista actual.</p>
+            <div class="row-actions">
+              <button type="button" id="importListBtn" class="btn">Subir lista</button>
+              <button type="button" id="exportTxtBtn" class="btn ghost">Descargar lista</button>
+              <button type="button" id="copyListBtn" class="btn ghost">Copiar lista</button>
+            </div>
+            <input id="listFile" type="file" accept=".txt,.csv,.json,text/plain,text/csv,application/json" hidden />
+          </div>
+          <div class="panel span-2">
+            <h2>Compartir el torneo con un código</h2>
+            <p class="note">Copia el código y pégalo en otro navegador (o mándalo a alguien) para abrir el mismo torneo con sus resultados.</p>
+            <div class="row-actions">
+              <button type="button" id="makeCodeBtn" class="btn">Crear código</button>
+              <button type="button" id="copyCodeBtn" class="btn ghost" disabled>Copiar código</button>
+            </div>
+            <label class="sr-only" for="codeOut">Código generado</label>
+            <textarea id="codeOut" rows="3" readonly></textarea>
+            <label for="codeIn">¿Te pasaron un código? Pégalo aquí</label>
+            <textarea id="codeIn" rows="3" placeholder="HTZT1:…"></textarea>
+            <div class="row-actions">
+              <button type="button" id="loadCodeBtn" class="btn">Abrir torneo</button>
+            </div>
+          </div>
+          <details class="panel span-2 advanced-panel">
+            <summary><h2>Opciones avanzadas</h2><span class="note">Copias de seguridad y borrar el torneo</span></summary>
+            <div class="adv-body">
+              <div>
+                <h3 class="sub-h">Copia de seguridad (.json)</h3>
+                <p class="note">Guarda el torneo completo en un archivo: participantes, ajustes, resultados y cambios.</p>
+                <div class="row-actions">
+                  <button type="button" id="exportJsonBtn" class="btn ghost">Descargar copia</button>
+                  <button type="button" id="importJsonBtn" class="btn ghost">Abrir copia</button>
+                  <button type="button" id="exportCsvBtn" class="btn ghost">Descargar lista en .csv</button>
+                </div>
+                <input id="jsonFile" type="file" accept=".json,application/json" hidden />
+              </div>
+              <div class="danger-zone">
+                <h3 class="sub-h">Borrar este torneo</h3>
+                <p class="note">Se elimina de este navegador. Descarga una copia antes si quieres conservarlo.</p>
+                <button type="button" id="deleteTournamentBtn" class="btn ghost danger">Borrar torneo</button>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- AJUSTES -->
+      <section class="view" id="view-settings" aria-labelledby="h-settings" hidden>
+        <div class="title-row">
+          <div>
+            <h1 id="h-settings">Ajustes</h1>
+            <p class="finding">Se guardan en este navegador y valen para todos tus torneos.</p>
+          </div>
+          <button type="button" id="resetSettingsBtn" class="btn ghost">Restablecer</button>
+        </div>
+        <div class="settings-grid">
+          <div class="panel">
+            <h2>Color</h2>
+            <p class="note">Cambia el color que resalta a los ganadores, al campeón y la ruleta.</p>
+            <div class="theme-grid" id="themeGrid" role="radiogroup" aria-label="Color del tema"></div>
+          </div>
+
+          <div class="panel">
+            <h2>Diseño del cuadro</h2>
+            <div class="choice-cards" role="radiogroup" aria-label="Diseño del cuadro">
+              <button type="button" role="radio" data-set-layout="auto">
+                <svg viewBox="0 0 48 32" aria-hidden="true"><rect x="2" y="4" width="28" height="24" rx="3"/><rect x="34" y="8" width="12" height="20" rx="2"/></svg>
+                <b>Automático</b><span>Espejo en la computadora, ronda a ronda en el celular.</span>
+              </button>
+              <button type="button" role="radio" data-set-layout="split">
+                <svg viewBox="0 0 48 32" aria-hidden="true"><path d="M2 6h7M2 12h7M2 20h7M2 26h7M9 6v6M9 20v6M9 9h5M9 23h5M14 9v14M14 16h6M46 6h-7M46 12h-7M46 20h-7M46 26h-7M39 6v6M39 20v6M39 9h-5M39 23h-5M34 9v14M34 16h-6"/><rect x="20" y="12" width="8" height="8" rx="2"/></svg>
+                <b>Espejo</b><span>Dos mitades que se juntan en la final, en el centro.</span>
+              </button>
+              <button type="button" role="radio" data-set-layout="classic">
+                <svg viewBox="0 0 48 32" aria-hidden="true"><path d="M2 4h9M2 11h9M2 21h9M2 28h9M11 4v7M11 21v7M11 7.5h8M11 24.5h8M19 7.5v17M19 16h9M28 16h6"/><rect x="34" y="11" width="11" height="10" rx="2"/></svg>
+                <b>Clásico</b><span>De izquierda a derecha, con el campeón al final.</span>
+              </button>
+              <button type="button" role="radio" data-set-layout="rounds">
+                <svg viewBox="0 0 48 32" aria-hidden="true"><rect x="2" y="2" width="10" height="5" rx="2"/><rect x="14" y="2" width="10" height="5" rx="2"/><rect x="26" y="2" width="10" height="5" rx="2"/><rect x="2" y="11" width="20" height="8" rx="2"/><rect x="26" y="11" width="20" height="8" rx="2"/><rect x="2" y="22" width="20" height="8" rx="2"/><rect x="26" y="22" width="20" height="8" rx="2"/></svg>
+                <b>Ronda a ronda</b><span>Una ronda a la vez, con tarjetas grandes «A VS B».</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>Animación del sorteo</h2>
+            <div class="choice-cards three" role="radiogroup" aria-label="Animación del sorteo">
+              <button type="button" role="radio" data-set-anim="wheel">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="17" r="12"/><path d="M16 5v24M4 17h24M7.5 8.5l17 17M24.5 8.5l-17 17M13 2h6l-3 4z"/></svg>
+                <b>Ruleta</b><span>Una ruleta gira y elige a cada uno.</span>
+              </button>
+              <button type="button" role="radio" data-set-anim="clash">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 16h9M30 16h-9M11 12l4 4-4 4M21 12l-4 4 4 4"/></svg>
+                <b>Choque VS</b><span>Los nombres chocan con un VS en el centro.</span>
+              </button>
+              <button type="button" role="radio" data-set-anim="off">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11"/><path d="M8 24L24 8"/></svg>
+                <b>Sin animación</b><span>Se muestra el resultado directamente.</span>
+              </button>
+            </div>
+            <div id="animOpts" class="anim-opts">
+              <div class="range-field">
+                <label for="set-appear">Velocidad de aparición <output id="set-appear-out" class="num"></output></label>
+                <input type="range" id="set-appear" min="0.2" max="2" step="0.1" />
+                <span class="range-hint"><span>Rápido</span><span>Lento</span></span>
+              </div>
+              <div class="range-field">
+                <label for="set-hold">Tiempo en pantalla de cada resultado <output id="set-hold-out" class="num"></output></label>
+                <input type="range" id="set-hold" min="0.3" max="5" step="0.1" />
+                <span class="range-hint"><span>Poco</span><span>Mucho</span></span>
+              </div>
+              <div class="range-field" id="spinField">
+                <label for="set-spin">Duración del giro <output id="set-spin-out" class="num"></output></label>
+                <input type="range" id="set-spin" min="1" max="8" step="0.5" />
+                <span class="range-hint"><span>Corto</span><span>Largo</span></span>
+              </div>
+              <p class="sub-h">Usar la animación al…</p>
+              <label class="check"><input id="set-animStart" type="checkbox" /> Empezar el torneo (sorteo de parejas)</label>
+              <label class="check"><input id="set-animTeams" type="checkbox" /> Armar equipos al azar</label>
+              <label class="check"><input id="set-animElim" type="checkbox" /> Eliminar a alguien al azar</label>
+            </div>
+            <div class="field sound-field">
+              <label for="set-sound">Sonido</label>
+              <div class="row-actions">
+                <select id="set-sound">
+                  <option value="original">Original (HtzRoulette)</option>
+                  <option value="minecraft">Minecraft</option>
+                  <option value="off">Sin sonido</option>
+                </select>
+                <button type="button" id="testSoundBtn" class="btn ghost">Probar sonido</button>
+              </div>
+            </div>
+            <div class="row-actions" style="margin-top:16px">
+              <button type="button" id="testAnimBtn" class="btn">Probar animación</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="anim.js?v=4"></script>
+  <script src="app.js?v=4"></script>
+</body>
+</html>
