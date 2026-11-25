@@ -17,7 +17,7 @@ const nextPow2 = (n) => { let p = 1; while (p < n) p *= 2; return p; };
 
 // ---------------------------------------------------------------- app settings (shared by every tournament)
 const LS_SETTINGS = 'htzt_settings';
-const DEFAULT_SETTINGS = { theme: 'lima', sound: 'original', layout: 'auto', anim: 'clash', appear: 0.6, hold: 1.2, spin: 3, animStart: true, animTeams: true, animElim: true };
+const DEFAULT_SETTINGS = { theme: 'red', twChannel: '', twCmd: '!unirme', twAccept: true, sound: 'original', layout: 'auto', anim: 'clash', appear: 0.6, hold: 1.2, spin: 3, animStart: true, animTeams: true, animElim: true };
 let settings = loadSettings();
 function loadSettings() {
   try { return { ...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem(LS_SETTINGS)) || {}) }; } catch (e) { return { ...DEFAULT_SETTINGS }; }
@@ -29,22 +29,25 @@ const animCfg = () => ({ anim: settings.anim, appear: settings.appear, hold: set
 
 // colour themes: they only change the accent (winners, champion, selections, the wheel)
 const THEMES = {
-  lima: { name: 'Lima', accent: '#c6f24e', hue: 78 },
-  oro: { name: 'Oro', accent: '#ffcc00', hue: 48 },
-  naranja: { name: 'Naranja', accent: '#ff8a3d', hue: 24 },
-  rojo: { name: 'Rojo', accent: '#ff5468', hue: 352 },
-  rosa: { name: 'Rosa', accent: '#ff6ec7', hue: 322 },
-  morado: { name: 'Morado', accent: '#b39bff', hue: 258 },
-  azul: { name: 'Azul', accent: '#5aa9ff', hue: 212 },
-  cian: { name: 'Cian', accent: '#3ee0d0', hue: 174 },
+  red: { name: 'Rojo', accent: '#f15562', on: '#ffffff', hue: 355 },
+  pink: { name: 'Rosa', accent: '#f155b0', on: '#ffffff', hue: 325 },
+  purple: { name: 'Morado', accent: '#b055f1', on: '#ffffff', hue: 275 },
+  blue: { name: 'Azul', accent: '#5596f1', on: '#ffffff', hue: 215 },
+  cyan: { name: 'Cian', accent: '#55caf1', on: '#0b1a20', hue: 195 },
+  green: { name: 'Verde', accent: '#55f196', on: '#0b1f12', hue: 145 },
+  yellow: { name: 'Amarillo', accent: '#f1d255', on: '#1a1400', hue: 48 },
+  gray: { name: 'Gris', accent: '#b2b2b2', on: '#14101c', hue: 0, mono: true },
 };
 function applyTheme() {
-  const th = THEMES[settings.theme] || THEMES.lima;
+  if (!THEMES[settings.theme]) settings.theme = 'red';
+  const th = THEMES[settings.theme];
   const n = parseInt(th.accent.slice(1), 16);
   const st = document.documentElement.style;
   st.setProperty('--accent', th.accent);
   st.setProperty('--accent-rgb', `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`);
   st.setProperty('--accent-hue', String(th.hue));
+  st.setProperty('--on-accent', th.on);
+  st.setProperty('--wheel-mono', th.mono ? '1' : '0');
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = '#000000';
 }
@@ -123,7 +126,8 @@ function sanitizeTournament(raw) {
     if (seen.has(id)) id = uid();
     seen.add(id);
     const team = teamIds.has(p.team) ? p.team : null;
-    out.participants.push({ id, name: p.name.trim().slice(0, 40), sub: !!p.sub, out: !!p.out, team, lock: !!(team && p.lock) });
+    const tw = typeof p.tw === 'string' && /^[a-z0-9_]{1,25}$/.test(p.tw) ? p.tw : undefined;
+    out.participants.push({ id, name: p.name.trim().slice(0, 40), sub: !!p.sub, out: !!p.out, team, lock: !!(team && p.lock), ...(tw ? { tw } : {}) });
   });
   const ids = new Set([...out.participants.map((p) => p.id), ...teamIds]);
   const okId = (v) => (typeof v === 'string' && ids.has(v) ? v : null);
@@ -706,6 +710,7 @@ function render(opts = {}) {
 function formatLabel(t) { return { league: 'Liga', elim: 'Eliminación', single: 'Cuadro' }[t.format]; }
 
 function renderTop() {
+  if (typeof renderTwitch === 'function' && $('joinHint')) renderTwitch();
   if (document.activeElement !== $('tName')) $('tName').value = cur.name;
   const n = mains().length;
   const nt = cur.teamMode ? cur.teams.filter((tm) => membersOf(tm.id).length).length : 0;
@@ -740,7 +745,7 @@ function renderParticipants(opts) {
     return `<li class="p-row${opts.arrive ? ' arrive' : ''}" style="${opts.arrive ? `animation-delay:${Math.min(vi, 20) * 18}ms` : ''}">
       <span class="p-seed num">${seed}</span>
       <input class="p-name" type="text" value="${esc(p.name)}" data-id="${p.id}" data-focus-id="name-${p.id}" maxlength="40" aria-label="Nombre de ${esc(p.name)}"${p.out ? ' disabled' : ''} />
-      ${teamSel}${pill}
+      ${p.tw ? `<span class="tw-tag" title="Se unió desde el chat de Twitch">@${esc(p.tw)}</span>` : ''}${teamSel}${pill}
       <span class="p-actions">
         <button type="button" class="icon-btn" data-act="up" data-id="${p.id}" aria-label="Subir a ${esc(p.name)}"${vi <= 0 ? ' disabled' : ''}>${ICON_UP}</button>
         <button type="button" class="icon-btn" data-act="down" data-id="${p.id}" aria-label="Bajar a ${esc(p.name)}"${vi < 0 || vi >= visible.length - 1 ? ' disabled' : ''}>${ICON_DOWN}</button>
@@ -756,7 +761,7 @@ function renderParticipants(opts) {
       : 'Pulsa la etiqueta Suplente de alguien para hacerlo jugador.';
   } else {
     $('pEmpty').querySelector('.empty-title').textContent = 'Aún no hay nadie';
-    $('pEmpty').querySelector('p:last-child').textContent = 'Escribe un nombre arriba y pulsa Enter. También puedes pegar una lista entera de golpe.';
+    $('pEmpty').querySelector('p:last-child').textContent = 'Aquí aparecerán los jugadores que añadas.';
   }
 
   // settings
@@ -977,7 +982,7 @@ function renderBracket() {
   $('h-bracket').textContent = cur.league ? 'Calendario' : (cur.elim ? 'Eliminación' : 'Cuadro');
   const layout = effLayout();
   if (!started()) {
-    wrap.innerHTML = `<div class="empty"><p class="empty-title">El torneo aún no empieza</p><p>Escribe los nombres en Participantes y pulsa ¡Empezar torneo!</p><p style="margin-top:16px"><button type="button" class="btn primary" data-go="participants">Ir a participantes</button></p></div>`;
+    wrap.innerHTML = `<div class="empty"><p class="empty-title">El torneo aún no empieza</p><p>Escribe los nombres en Jugadores y pulsa ¡Empezar torneo!</p><p style="margin-top:16px"><button type="button" class="btn primary" data-go="participants">Ir a Jugadores</button></p></div>`;
     $('bFinding').textContent = '';
     subsPanel.hidden = true;
     return;
@@ -1044,7 +1049,7 @@ function renderBracket() {
         <label class="sr-only" for="out-${s.id}">Sale para que entre ${esc(s.name)}</label>
         <select id="out-${s.id}"><option value="">Entra por…</option>${alive.map((id) => `<option value="${id}">${esc(nameOf(id))}${cur.teamMode && byId(id).team ? ` (${esc(nameOf(byId(id).team))})` : ''}</option>`).join('')}</select>
         <button type="button" class="btn small" data-sub="${s.id}">Cambiar</button></div></li>`).join('')
-    : '<li class="empty-line">No hay suplentes disponibles. Añádelos en Participantes.</li>';
+    : '<li class="empty-line">No hay suplentes disponibles. Añádelos en Jugadores.</li>';
   const log = cur.log.slice(-12).reverse();
   $('logList').innerHTML = log.length ? log.map((l) => `<li>${esc(l)}</li>`).join('') : '<li class="empty-line">Sin cambios todavía</li>';
 }
@@ -1440,6 +1445,7 @@ function bind() {
   });
   bindSettings();
   bindTeams();
+  bindTwitch();
   // close the "Más" menu after picking something in it
   document.querySelectorAll('details.more').forEach((dt) => dt.addEventListener('click', (e) => {
     if (e.target.closest('.more-menu .btn')) dt.open = false;
@@ -1557,7 +1563,7 @@ function bindTeams() {
 }
 
 function renderSettings() {
-  $('themeGrid').innerHTML = Object.entries(THEMES).map(([k, th]) => `<button type="button" role="radio" class="swatch" data-set-theme="${k}" aria-checked="${k === settings.theme}" style="--c:${th.accent}"><span></span>${th.name}</button>`).join('');
+  $('themeGrid').innerHTML = Object.entries(THEMES).map(([k, th]) => `<button type="button" role="radio" class="swatch" data-set-theme="${k}" aria-checked="${k === settings.theme}" aria-label="${th.name}" title="${th.name}" style="--c:${th.accent}"></button>`).join('');
   $('set-sound').value = settings.sound;
   document.querySelectorAll('[data-set-layout]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.setLayout === settings.layout)));
   document.querySelectorAll('[data-set-anim]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.setAnim === settings.anim)));
@@ -1600,6 +1606,61 @@ function bindSettings() {
   });
   $('resetSettingsBtn').addEventListener('click', () => { settings = { ...DEFAULT_SETTINGS }; applyTheme(); changed(); toast('Ajustes restablecidos'); });
   renderSettings();
+}
+
+// ---------------------------------------------------------------- Twitch chat: "!unirme <nick>"
+function joinCmd() { return (settings.twCmd || '!unirme').trim().toLowerCase().split(/\s+/)[0] || '!unirme'; }
+function onChat({ login, displayName, text }) {
+  const cmd = joinCmd();
+  const low = text.toLowerCase();
+  if (low !== cmd && !low.startsWith(`${cmd} `)) return;
+  if (!settings.twAccept || started()) return;
+  // the nick they write is the name used in the tournament; their Twitch user only counts once
+  const nick = text.slice(cmd.length).trim().replace(/^@+/, '').replace(/\s+/g, ' ').slice(0, 40);
+  if (!nick) return;
+  if (cur.participants.some((p) => p.tw === login && !p.out)) return;
+  if (cur.participants.some((p) => p.name.toLowerCase() === nick.toLowerCase())) return;
+  mutate((t) => { t.participants.push({ id: uid(), name: nick, sub: false, out: false, team: null, lock: false, tw: login }); }, { arrive: true });
+  toast(`${nick} se unió desde el chat (@${displayName})`);
+}
+let twState = 'off';
+function renderTwitch() {
+  const el = $('twStatus');
+  const labels = { off: 'Desconectado', connecting: 'Conectando…', connected: `En vivo: #${Twitch.channel}` };
+  el.textContent = labels[twState] || twState;
+  el.dataset.state = twState in labels ? twState : 'error';
+  $('twConnect').checked = twState === 'connected' || twState === 'connecting';
+  $('twAccept').checked = !!settings.twAccept;
+  $('joinHintCmd').textContent = joinCmd();
+  $('joinHint').hidden = !(twState === 'connected' && settings.twAccept && !started());
+}
+function bindTwitch() {
+  $('twChannel').value = settings.twChannel;
+  $('twCmd').value = settings.twCmd;
+  Twitch.on({
+    message: onChat,
+    status: (st, info) => {
+      twState = st === 'error' ? (info || 'Error') : st;
+      if (st === 'error') { toast(`Twitch: ${info || 'no se pudo conectar'}`); Twitch.disconnect(true); }
+      renderTwitch();
+    },
+  });
+  $('twConnect').addEventListener('change', (e) => {
+    if (e.target.checked) {
+      settings.twChannel = $('twChannel').value.trim();
+      saveSettings();
+      if (!settings.twChannel) { toast('Escribe primero el nombre de tu canal'); e.target.checked = false; $('twChannel').focus(); return; }
+      Twitch.connect(settings.twChannel);
+    } else Twitch.disconnect();
+  });
+  $('twChannel').addEventListener('keydown', (e) => { if (e.key === 'Enter') { $('twConnect').checked = true; $('twConnect').dispatchEvent(new Event('change')); } });
+  $('twCmd').addEventListener('change', (e) => {
+    let v = e.target.value.trim().split(/\s+/)[0] || '!unirme';
+    if (!v.startsWith('!')) v = `!${v}`;
+    settings.twCmd = v; e.target.value = v; saveSettings(); renderTwitch();
+  });
+  $('twAccept').addEventListener('change', (e) => { settings.twAccept = e.target.checked; saveSettings(); renderTwitch(); });
+  renderTwitch();
 }
 
 function enterPresent() {

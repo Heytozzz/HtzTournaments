@@ -14,6 +14,7 @@ Crea cuadros de torneo y tablas de clasificación directamente en el navegador. 
 - **Por equipos**: equipos de 2 a 10 personas. Puedes poner a alguien en un equipo a mano y sortear al resto. Funciona con los tres formatos.
 - **Sorteo animado** al empezar, al armar equipos y al eliminar al azar: ruleta o choque de nombres con un VS en el centro. La velocidad y los tiempos se cambian en Ajustes.
 - **Ajustes**: color del tema (8 colores), diseño del cuadro (Espejo, Clásico, Ronda a ronda o Automático), animaciones y sonido (el de HtzRoulette o Minecraft).
+- **Unirse desde el chat de Twitch**: escribe tu canal y pulsa Conectar. Quien escriba `!unirme <nick>` en el chat entra con ese nick (solo una vez por usuario de Twitch). El comando se puede cambiar y los ingresos se abren o cierran con «Aceptar ingresos». No hace falta iniciar sesión: el chat se lee de forma anónima.
 - **Liga** (todos contra todos): calendario por jornadas, con descansos si el número es impar. Tiene ida y vuelta opcional, puntos configurables (3/1, 2/1, 1/0) y una tabla con PJ, G, E, P, puntos a favor y en contra, y diferencia.
 - **Resultados**: haz clic en un nombre para darle la victoria (otro clic la quita) o escribe el marcador. Si cambias un resultado anterior, el cuadro se corrige solo.
 - **Clasificación**: podio con los lugares que elijas premiar (solo campeón, 1º–2º, 1º–3º, hasta 4º u 8º) y la tabla completa, con puestos compartidos (por ejemplo, 5º–8º).

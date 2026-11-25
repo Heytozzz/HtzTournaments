@@ -186,17 +186,17 @@ const Anim = (() => {
     return 0.2126 * lin(f(0)) + 0.7152 * lin(f(8)) + 0.0722 * lin(f(4));
   }
   // slices in shades of the theme colour, lighter towards the middle of the circle
-  function slicePaint(index, count, baseHue) {
+  function slicePaint(index, count, baseHue, mono) {
     const pos = index / count;
     const triangle = pos < 0.5 ? pos * 2 : (1 - pos) * 2;
-    const h = (baseHue + (index % 2 ? 10 : -10) + 360) % 360;
-    const s = Math.round(78 + triangle * 18);
-    const l = Math.round(44 + triangle * 20);
+    const h = mono ? 0 : (baseHue + (index % 2 ? 10 : -10) + 360) % 360;
+    const s = mono ? 0 : Math.round(78 + triangle * 18);
+    const l = Math.round((mono ? 30 : 44) + triangle * (mono ? 36 : 20));
     return { h, s, l, color: `hsl(${h}, ${s}%, ${l}%)` };
   }
   function themeColors() {
     const cs = getComputedStyle(document.documentElement);
-    return { accent: cs.getPropertyValue('--accent').trim() || '#c6f24e', hue: Number(cs.getPropertyValue('--accent-hue')) || 80 };
+    return { accent: cs.getPropertyValue('--accent').trim() || '#f15562', hue: Number(cs.getPropertyValue('--accent-hue')) || 0, mono: cs.getPropertyValue('--wheel-mono').trim() === '1' };
   }
 
   function makeWheel(host) {
@@ -211,7 +211,7 @@ const Anim = (() => {
     canvas.style.width = `${size}px`; canvas.style.height = `${size}px`;
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-    const { accent, hue } = themeColors();
+    const { accent, hue, mono } = themeColors();
     let rotation = Math.random() * Math.PI * 2;
     let names = [];
     let animating = false;
@@ -259,7 +259,7 @@ const Anim = (() => {
       ctx.translate(cx, cy);
       ctx.rotate(rotation);
       const paint = (i, hl) => {
-        const p = slicePaint(i, n, hue);
+        const p = slicePaint(i, n, hue, mono);
         ctx.save();
         if (hl) { ctx.shadowColor = 'rgba(0, 0, 0, 0.65)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 4; }
         ctx.beginPath();
@@ -287,9 +287,9 @@ const Anim = (() => {
         const angle = i * seg + seg / 2;
         const flip = Math.cos(rotation + angle) < 0;
         const edge = radius - 10;
-        const p = slicePaint(i, n, hue);
+        const p = slicePaint(i, n, hue, mono);
         const light = hl ? Math.min(p.l + 14, 74) : p.l;
-        ctx.font = `600 ${fontSize}px Inter, "Segoe UI", sans-serif`;
+        ctx.font = `600 ${fontSize}px "DM Sans", "Segoe UI", sans-serif`;
         let label = name;
         while (ctx.measureText(label).width > radius - 40 && label.length > 2) label = label.slice(0, -1);
         if (label !== name) label = `${label.slice(0, -1)}…`;
