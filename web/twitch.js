@@ -86,6 +86,11 @@ const Twitch = (() => {
     if (!silent) onStatus('off');
   }
 
+  // phones pause a page in the background and drop its socket: reconnect on return
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && wanted && (!ws || ws.readyState > 1)) open();
+  });
+
   return {
     connect,
     disconnect,

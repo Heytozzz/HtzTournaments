@@ -1045,3 +1045,6 @@ input.p-name:focus, input.team-title:focus { background: var(--chip); border-col
   .hdr-actions select { flex: 1; max-width: none; }
   .t-name { order: 0; }
 }
+
+.tw-log { font-size: 13px; color: #ff8a8a; max-width: 520px; }
+.tw-log[data-ok="1"] { color: #55f196; }

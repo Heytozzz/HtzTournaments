@@ -1614,19 +1614,31 @@ function onChat({ login, displayName, text }) {
   const cmd = joinCmd();
   const low = text.toLowerCase();
   if (low !== cmd && !low.startsWith(`${cmd} `)) return;
-  if (!settings.twAccept || started()) return;
+  // every attempt gets a visible answer, so the streamer knows why someone did not get in
+  const no = (why) => chatLog(`@${displayName}: ${why}`, false);
+  if (!settings.twAccept) { no('los ingresos están cerrados (activa «Aceptar ingresos»)'); return; }
+  if (started()) { no('este torneo ya empezó. Crea uno nuevo con «+» para abrir ingresos'); return; }
   // the nick they write is the name used in the tournament; their Twitch user only counts once
   const nick = text.slice(cmd.length).trim().replace(/^@+/, '').replace(/\s+/g, ' ').slice(0, 40);
-  if (!nick) return;
-  if (cur.participants.some((p) => p.tw === login && !p.out)) return;
-  if (cur.participants.some((p) => p.name.toLowerCase() === nick.toLowerCase())) return;
+  if (!nick) { no(`falta el nick. Escribe ${cmd} y tu nick`); return; }
+  const mine = cur.participants.find((p) => p.tw === login && !p.out);
+  if (mine) { no(`ya estás dentro como «${mine.name}»`); return; }
+  if (cur.participants.some((p) => p.name.toLowerCase() === nick.toLowerCase())) { no(`el nick «${nick}» ya está en la lista`); return; }
   mutate((t) => { t.participants.push({ id: uid(), name: nick, sub: false, out: false, team: null, lock: false, tw: login }); }, { arrive: true });
-  toast(`${nick} se unió desde el chat (@${displayName})`);
+  chatLog(`${nick} se unió (@${displayName})`, true);
+}
+function chatLog(msg, ok) {
+  const el = $('twLog');
+  el.textContent = `${ok ? '✓' : '✗'} ${msg}`;
+  el.dataset.ok = ok ? '1' : '0';
+  el.hidden = false;
+  toast(msg);
 }
 let twState = 'off';
 function renderTwitch() {
   const el = $('twStatus');
-  const labels = { off: 'Desconectado', connecting: 'Conectando…', connected: `En vivo: #${Twitch.channel}` };
+  const closed = !settings.twAccept ? ' · ingresos cerrados' : (started() ? ' · torneo empezado, ingresos cerrados' : '');
+  const labels = { off: 'Desconectado', connecting: 'Conectando…', connected: `En vivo: #${Twitch.channel}${closed}` };
   el.textContent = labels[twState] || twState;
   el.dataset.state = twState in labels ? twState : 'error';
   $('twConnect').checked = twState === 'connected' || twState === 'connecting';
